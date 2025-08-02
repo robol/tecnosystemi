@@ -1,0 +1,15 @@
+{
+  "domain": "tecnosystemi",
+  "name": "Tecnosystemi",
+  "codeowners": ["@robol"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://www.home-assistant.io/integrations/tecnosystemi",
+  "homekit": {},
+  "iot_class": "cloud_polling",
+  "quality_scale": "bronze",
+  "version": "0.1.0",
+  "requirements": [],
+  "ssdp": [],
+  "zeroconf": []
+}
