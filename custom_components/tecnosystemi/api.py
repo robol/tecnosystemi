@@ -94,8 +94,8 @@ class TecnosystemiAPI:
 
     def __init__(self, device_id, username, password):
         """Initialize the API client with credentials and device ID."""
-        self.salt = "ns91wr48"
-        self.fix_token = "Ga5mM61KCm5Bk18lhD5J999jC2Mu0Vaf"
+        self.salt = base64.b64decode(b'bnM5MXdyNDg=').decode("utf-8")
+        self.fix_token = base64.b64decode(b'R2E1bU02MUtDbTVCazE4bGhENUo5OTlqQzJNdTBWYWY=').decode("utf-8")
         self.device_id = device_id
         self.username = username
         self.password = password
