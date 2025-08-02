@@ -22,3 +22,13 @@ I will need help from people actually owning the hardware.
 Installing the integration requires to copy the ``custom_components/tecnosystemi`` folder from 
 this repository inside the ``config/custom_components/`` folder of your Home Assistant instance. 
 If you do not have a ``custom_components`` folder, simply create a new one.
+
+## How to configure a new instance
+Go to Settings -> Integrations and add a new Tecnosystemi instance. It will asks for username 
+and password, and a PIN. The PIN is the one that you set up using the Android (or iOS) apps, 
+and the same PIN is used across all Tecnosystemi systems (if you have more than one). 
+
+## TODO List
+
+ * Support different systems with different PINs, that should be asked interactively
+   when the systems are discovered.
