@@ -27,12 +27,13 @@ async def async_setup_entry(
     entities: list[TecnosystemiSwitchEntity] = []
     for device_id in coordinator.data:
         if coordinator.data[device_id]["IsMaster"]:
+            device_serial = coordinator.data[device_id]["Device"].Serial
             master_switch_entity = TecnosystemiMasterSwitchEntity(
                 device_id=device_id,
                 zone=coordinator.data[device_id],
                 coordinator=coordinator,
                 api=api,
-                pin=entry.data[CONF_PIN],
+                pin=entry.data[f"{device_serial}_{CONF_PIN}"],
             )
             entities.append(master_switch_entity)
 

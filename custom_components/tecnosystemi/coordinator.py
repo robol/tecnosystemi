@@ -39,6 +39,10 @@ class TecnosystemiCoordinator(DataUpdateCoordinator):
         """
         self._plants = await self.api.GetPlants()
 
+    def get_device_pin(self, device_serial):
+        """Get the PIN for a given device serial number."""
+        return self.config_entry.data.get(f"{device_serial}_{CONF_PIN}")
+
     async def _async_api_call(self):
         """Async API call that retrieves the updated status."""
         data = {}
@@ -50,7 +54,7 @@ class TecnosystemiCoordinator(DataUpdateCoordinator):
                     # Then, we create single climate entities for each of them, with
                     # a single parent device (the Polaris controller).
                     state = await self.api.getDeviceState(
-                        device, self.config_entry.data[CONF_PIN]
+                        device, self.get_device_pin(device.Serial)
                     )
 
                     # Note that this call might fail in case the user has logged in with the
@@ -59,7 +63,7 @@ class TecnosystemiCoordinator(DataUpdateCoordinator):
                     if state is None:
                         await self.api.login()
                         state = await self.api.getDeviceState(
-                            device, self.config_entry.data[CONF_PIN]
+                            device, self.get_device_pin(device.Serial)
                         )
 
                     for zone in state["Zones"]:

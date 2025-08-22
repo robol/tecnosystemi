@@ -2,12 +2,25 @@
   "config": {
     "step": {
       "user": {
+        "title": "Tecnosystemi: login",
+        "description": "Insert your Tecnosystemi credentials to connect Home Assistant to your devices.",        
         "data": {
-          "host": "[%key:common::config_flow::data::host%]",
           "username": "[%key:common::config_flow::data::username%]",
           "password": "[%key:common::config_flow::data::password%]"
         }
-      }
+      },
+      "device": {
+            "title": "Tecnosystemi: import device",
+            "description": "Do you want to add {import_device} to Home Assistant?",
+            "data": {
+                "import_device": "Import device",
+                "pin": "[%key:common::config_flow::data::pin%]"
+            },
+            "data_description": {
+                "import_device": "Check to add this device to Home Assistant",
+                "pin": "The PIN code for this device"
+            }
+        }
     },
     "error": {
       "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",

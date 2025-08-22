@@ -26,12 +26,13 @@ async def async_setup_entry(
 
     entities: list[TecnosystemiSensorEntity] = []
     for device_id in coordinator.data:
+        device_serial = coordinator.data[device_id]["Device"].Serial
         temperature_entity = TecnosystemiTemperatureSensorEntity(
             device_id=device_id,
             zone=coordinator.data[device_id],
             coordinator=coordinator,
             api=api,
-            pin=entry.data[CONF_PIN],
+            pin=entry.data[f"{device_serial}_{CONF_PIN}"],
         )
         entities.append(temperature_entity)
 
@@ -40,7 +41,7 @@ async def async_setup_entry(
             zone=coordinator.data[device_id],
             coordinator=coordinator,
             api=api,
-            pin=entry.data[CONF_PIN],
+            pin=entry.data[f"{device_serial}_{CONF_PIN}"],
         )
         entities.append(humidity_entity)
 

@@ -42,13 +42,15 @@ async def async_setup_entry(
         # Check if we have a master climate for this zone already. If we do not,
         # create a new one to pass down to all zone thermostat
         master_key = coordinator.data[device_id]["Device"].Serial
+        device_serial = coordinator.data[device_id]["Device"].Serial
+
         if master_key not in masters:
             masters[master_key] = TecnosystemiMasterClimateEntity(
                 device_id=device_id,
                 zone=coordinator.data[device_id],
                 coordinator=coordinator,
                 api=api,
-                pin=entry.data[CONF_PIN],
+                pin=entry.data[f"{device_serial}_{CONF_PIN}"],
             )
 
             entities.append(masters[master_key])
@@ -58,7 +60,7 @@ async def async_setup_entry(
             zone=coordinator.data[device_id],
             coordinator=coordinator,
             api=api,
-            pin=entry.data[CONF_PIN],
+            pin=entry.data[f"{device_serial}_{CONF_PIN}"],
         )
         entities.append(entity)
 
