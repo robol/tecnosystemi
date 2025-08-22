@@ -40,8 +40,3 @@ but feel free to report success stories and/or feedback. Other products may be s
 I will need help from people actually owning the hardware.
 
  * ProAir system with Polaris 5X.
-
-## TODO List
-
- * Support different systems with different PINs, that should be asked interactively
-   when the systems are discovered.
