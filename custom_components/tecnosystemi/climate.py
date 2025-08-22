@@ -97,7 +97,7 @@ class TecnosystemiMasterClimateEntity(CoordinatorEntity, ClimateEntity):
         self.api = api
         self.pin = pin
 
-        self._attr_name = f"{zone['Device'].Name} - Master"
+        self._attr_name = zone["Device"].Name
         self._attr_device_info = zone["DeviceInfo"]
 
         # self._handle_coordinator_update()
