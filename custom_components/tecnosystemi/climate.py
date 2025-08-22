@@ -76,6 +76,8 @@ class TecnosystemiMasterClimateEntity(CoordinatorEntity, ClimateEntity):
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_supported_features = ClimateEntityFeature.TARGET_TEMPERATURE
     _attr_target_temperature_step = 1.0
+    _attr_max_temp = 31.0
+    _attr_min_temp = 16.0
 
     def __init__(
         self,
@@ -190,6 +192,9 @@ class TecnosystemiClimateEntity(CoordinatorEntity, ClimateEntity):
     _attr_hvac_action = None
     _attr_fan_modes = [FAN_AUTO, FAN_HIGH, FAN_MEDIUM, FAN_LOW]
     _attr_fan_mode = FAN_AUTO
+    _attr_max_temp = 31.0
+    _attr_min_temp = 16.0
+    _attr_target_temperature_step = 0.5
 
     def __init__(
         self,
@@ -217,28 +222,6 @@ class TecnosystemiClimateEntity(CoordinatorEntity, ClimateEntity):
 
     def update_attrs_from_state(self):
         """Update attributes from the current state."""
-
-        # Check the mode of the master
-        # if not self.zone_state["DeviceState"]["IsCooling"]:
-        #     hvac_master_mode = HVACMode.HEAT
-        # elif self.zone_state["DeviceState"]["OperatingModeCooling"] == 1:
-        #     hvac_master_mode = HVACMode.COOL
-        # elif self.zone_state["DeviceState"]["OperatingModeCooling"] == 2:
-        #     hvac_master_mode = HVACMode.DRY
-        # elif self.zone_state["DeviceState"]["OperatingModeCooling"] == 3:
-        #     hvac_master_mode = HVACMode.FAN_ONLY
-        # else:
-        #     _LOGGER("Unsupported OperatingModeCooling in Tecnosystemi integration")
-
-        # if self.zone_state["DeviceState"]["IsOFF"]:
-        #     self._attr_hvac_modes = [HVACMode.OFF]
-        #     self._attr_hvac_mode = HVACMode.OFF
-        # else:
-        #     self._attr_hvac_modes = [HVACMode.OFF, hvac_master_mode]
-        #     self._attr_hvac_mode = (
-        #         HVACMode.OFF if self.zone_state["IsOFF"] else hvac_master_mode
-        #     )
-
         self._attr_hvac_mode = (
             HVACMode.OFF if self.zone_state["IsOFF"] else HVACMode.AUTO
         )
@@ -247,7 +230,7 @@ class TecnosystemiClimateEntity(CoordinatorEntity, ClimateEntity):
         self._attr_current_humidity = float(self.zone_state.get("Umd", 0)) / 10.0
 
         fan_mode = self.zone_state.get("SerrandaSet")
-        if fan_mode in [0, 16]:
+        if fan_mode == 0 or fan_mode >= 16:
             self._attr_fan_mode = FAN_AUTO
         elif fan_mode == 1:
             self._attr_fan_mode = FAN_LOW
