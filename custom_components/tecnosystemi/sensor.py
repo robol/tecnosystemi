@@ -6,13 +6,12 @@ from typing import Any
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.const import CONF_PIN, PERCENTAGE, UnitOfTemperature
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import TecnosystemiConfigEntry
 from .api import TecnosystemiAPI
-from .coordinator import TecnosystemiCoordinator
+from .coordinator import TecnosystemiCoordinator, TecnosystemiCoordinatorEntity
 
 
 async def async_setup_entry(
@@ -24,7 +23,7 @@ async def async_setup_entry(
     coordinator: TecnosystemiCoordinator = entry.runtime_data
     api = coordinator.api
 
-    entities: list[TecnosystemiSensorEntity] = []
+    entities: list[TecnosystemiCoordinatorEntity] = []
     for device_id in coordinator.data:
         device_serial = coordinator.data[device_id]["Device"].Serial
         temperature_entity = TecnosystemiTemperatureSensorEntity(
@@ -45,45 +44,18 @@ async def async_setup_entry(
         )
         entities.append(humidity_entity)
 
+        shutter_entity = TecnosystemiShutterSensorEntity(
+            device_id=device_id,
+            zone=coordinator.data[device_id],
+            coordinator=coordinator,
+            api=api,
+            pin=entry.data[f"{device_serial}_{CONF_PIN}"],
+        )
+        entities.append(shutter_entity)
+
     async_add_entities(entities)
 
-
-class TecnosystemiSensorEntity(CoordinatorEntity, SensorEntity):
-    """Minimal Temperature Sensor entity for Tecnosystemi integration."""
-
-    def __init__(
-        self,
-        device_id: str,
-        zone: Any,
-        coordinator: TecnosystemiCoordinator,
-        api: TecnosystemiAPI,
-        pin: str,
-    ) -> None:
-        """Initialize the sensor entity."""
-        CoordinatorEntity.__init__(self, coordinator)
-        self.device_id = device_id
-        self.zone = zone
-        self.api = api
-        self.pin = pin
-        self.zone_state = zone
-        self.coordinator = coordinator
-
-    def update_attrs_from_state(self):
-        """Update attributes from the current state."""
-        raise NotImplementedError(
-            "Please overload this function in the specific sensor entity."
-        )
-
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-        self.zone_state = self.coordinator.data[self.device_id]
-
-        self.update_attrs_from_state()
-        self.async_write_ha_state()
-
-
-class TecnosystemiTemperatureSensorEntity(TecnosystemiSensorEntity):
+class TecnosystemiTemperatureSensorEntity(TecnosystemiCoordinatorEntity, SensorEntity):
     """Temperature Sensor entity for Tecnosystemi integration."""
 
     _attr_device_class = SensorDeviceClass.TEMPERATURE
@@ -99,7 +71,7 @@ class TecnosystemiTemperatureSensorEntity(TecnosystemiSensorEntity):
         pin: str,
     ) -> None:
         """Initialize the temperature sensor entity."""
-        TecnosystemiSensorEntity.__init__(self, device_id, zone, coordinator, api, pin)
+        TecnosystemiCoordinatorEntity.__init__(self, device_id, zone, coordinator, api, pin)
 
         self._attr_unique_id = device_id + "_temperature"
         self._attr_name = "Temperature of " + zone["Name"] + " - " + zone["Device"].Name
@@ -112,7 +84,7 @@ class TecnosystemiTemperatureSensorEntity(TecnosystemiSensorEntity):
         self._attr_native_value = float(self.zone_state["Temp"]) / 10.0
 
 
-class TecnosystemiHumiditySensorEntity(TecnosystemiSensorEntity):
+class TecnosystemiHumiditySensorEntity(TecnosystemiCoordinatorEntity, SensorEntity):
     """Humidity Sensor entity for Tecnosystemi integration."""
 
     _attr_device_class = SensorDeviceClass.HUMIDITY
@@ -128,7 +100,7 @@ class TecnosystemiHumiditySensorEntity(TecnosystemiSensorEntity):
         pin: str,
     ) -> None:
         """Initialize the temperature sensor entity."""
-        TecnosystemiSensorEntity.__init__(self, device_id, zone, coordinator, api, pin)
+        TecnosystemiCoordinatorEntity.__init__(self, device_id, zone, coordinator, api, pin)
 
         self._attr_unique_id = device_id + "_humidity"
         self._attr_name = "Humidity of " + zone["Name"] + " - " + zone["Device"].Name
@@ -139,3 +111,39 @@ class TecnosystemiHumiditySensorEntity(TecnosystemiSensorEntity):
     def update_attrs_from_state(self):
         """Update attributes from the current state."""
         self._attr_native_value = float(self.zone_state["Umd"]) / 10.0
+
+class TecnosystemiShutterSensorEntity(TecnosystemiCoordinatorEntity, SensorEntity):
+    """Shutter Sensor entity for Tecnosystemi integration."""
+
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_device_class = SensorDeviceClass.POWER_FACTOR
+    _attr_suggested_display_precision = 0
+
+    def __init__(
+        self,
+        device_id: str,
+        zone: Any,
+        coordinator: TecnosystemiCoordinator,
+        api: TecnosystemiAPI,
+        pin: str,
+    ) -> None:
+        """Initialize the shutter sensor entity."""
+        TecnosystemiCoordinatorEntity.__init__(self, device_id, zone, coordinator, api, pin)
+
+        self._attr_unique_id = device_id + "_shutter"
+        self._attr_name = "Shutter Position of " + zone["Name"] + " - " + zone["Device"].Name
+        self._attr_device_info = zone["DeviceInfo"]
+
+        self.update_attrs_from_state()
+
+    def update_attrs_from_state(self):
+        """Update attributes from the current state."""
+        value = int(self.zone_state["Serranda"])
+
+        # Ignore the bit in position 5, that signals that the
+        # shutter is in auto mode. The value is in the range [0, 3],
+        # and we rescale it to [0, 100].
+        value = value & 0x0F
+        value = value * 100.0 / 3.0
+
+        self._attr_native_value = value

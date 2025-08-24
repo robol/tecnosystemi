@@ -5,11 +5,15 @@ from __future__ import annotations
 import asyncio
 from datetime import timedelta
 import logging
+from typing import Any
 
 from homeassistant.const import CONF_PIN
+from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .api import TecnosystemiAPI
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -121,3 +125,37 @@ class TecnosystemiCoordinator(DataUpdateCoordinator):
                 return data
         except RuntimeError as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from None
+
+class TecnosystemiCoordinatorEntity(CoordinatorEntity):
+    """Minimal Temperature Sensor entity for Tecnosystemi integration."""
+
+    def __init__(
+        self,
+        device_id: str,
+        zone: Any,
+        coordinator: TecnosystemiCoordinator,
+        api: TecnosystemiAPI,
+        pin: str,
+    ) -> None:
+        """Initialize the sensor entity."""
+        CoordinatorEntity.__init__(self, coordinator)
+        self.device_id = device_id
+        self.zone = zone
+        self.api = api
+        self.pin = pin
+        self.zone_state = zone
+        self.coordinator = coordinator
+
+    def update_attrs_from_state(self):
+        """Update attributes from the current state."""
+        raise NotImplementedError(
+            "Please overload this function in the specific sensor entity."
+        )
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        self.zone_state = self.coordinator.data[self.device_id]
+
+        self.update_attrs_from_state()
+        self.async_write_ha_state()
