@@ -6,6 +6,7 @@ import asyncio
 from datetime import timedelta
 import logging
 from typing import Any
+import json
 
 from homeassistant.const import CONF_PIN
 from homeassistant.core import callback
@@ -17,6 +18,13 @@ from .api import TecnosystemiAPI
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
+
+class TecnosystemiJSONEncoder(json.JSONEncoder):
+    """Custom JSON encoder for Tecnosystemi objects."""
+    def default(self, o):
+        if hasattr(o, "__dict__"):
+            return o.__dict__
+        return super().default(o)
 
 
 class TecnosystemiCoordinator(DataUpdateCoordinator):
@@ -70,36 +78,22 @@ class TecnosystemiCoordinator(DataUpdateCoordinator):
                             device, self.get_device_pin(device.Serial)
                         )
 
-                    for zone in state["Zones"]:
-                        zone["Device"] = device
-                        zone["Plant"] = plant
-                        zone["DeviceState"] = {
-                            "Errors": state["Errors"],
-                            "Serial": state["Serial"],
-                            "Name": state["Name"],
-                            "FWVer": state["FWVer"],
-                            "IsOFF": state["IsOFF"],
-                            "IsCooling": state["IsCooling"],
-                            "OperatingModeCooling": state["OperatingModeCooling"],
-                            "LastConfigUpdate": state["LastConfigUpdate"],
-                            "LastSyncUpdate": state["LastSyncUpdate"],
-                            "NumErrors": state["NumErrors"],
-                            "Icon": state["Icon"],
-                            "IrPresent": data,
-                            "TempCan": state["TempCan"],
-                            "IP": state["IP"],
-                            "FInv": state["FInv"],
-                            "FEst": state["FEst"],
-                        }
-                        zone["DeviceInfo"] = DeviceInfo(
-                            identifiers={(DOMAIN, zone["Device"].Serial)},
-                            name=zone["Device"].Name,
-                            manufacturer="Tecnosystemi",
-                            model="ProAir",
-                            serial_number=zone["Device"].Serial,
-                            sw_version=zone["Device"].FWVer,
+                    state["Device"] = device
+                    state["Plant"] = plant
+
+                    # For debugging purposes, print the full state
+                    print(json.dumps(state, indent=4, cls=TecnosystemiJSONEncoder))
+
+                    state["DeviceInfo"] = DeviceInfo(
+                             identifiers={(DOMAIN, state["Device"].Serial)},
+                             name=state["Device"].Name,
+                             manufacturer="Tecnosystemi",
+                             model="ProAir",
+                             serial_number=state["Device"].Serial,
+                             sw_version=state["Device"].FWVer,
                         )
-                        data[f"{plant.LVPL_Id}_{device.Serial}_{zone['ZoneId']}"] = zone
+
+                    data[f"{plant.LVPL_Id}_{device.Serial}"] = state
 
             return data
 
@@ -132,7 +126,8 @@ class TecnosystemiCoordinatorEntity(CoordinatorEntity):
     def __init__(
         self,
         device_id: str,
-        zone: Any,
+        device_state: Any,
+        zone_id: int,
         coordinator: TecnosystemiCoordinator,
         api: TecnosystemiAPI,
         pin: str,
@@ -140,10 +135,10 @@ class TecnosystemiCoordinatorEntity(CoordinatorEntity):
         """Initialize the sensor entity."""
         CoordinatorEntity.__init__(self, coordinator)
         self.device_id = device_id
-        self.zone = zone
+        self.device_state = device_state
+        self.zone_id = zone_id
         self.api = api
         self.pin = pin
-        self.zone_state = zone
         self.coordinator = coordinator
 
     def update_attrs_from_state(self):
@@ -152,10 +147,18 @@ class TecnosystemiCoordinatorEntity(CoordinatorEntity):
             "Please overload this function in the specific sensor entity."
         )
 
+    def get_zone_state(self) -> dict:
+        """Get the state of the zone."""
+        for zone in self.device_state.get("Zones", []):
+            if zone["ZoneId"] == self.zone_id:
+                return zone
+        raise ValueError(f"Zone ID {self.zone_id} not found in device state.")
+
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        self.zone_state = self.coordinator.data[self.device_id]
+        self.device_state = self.coordinator.data[self.device_id]
+        self.zone_state = self.get_zone_state()
 
         self.update_attrs_from_state()
         self.async_write_ha_state()

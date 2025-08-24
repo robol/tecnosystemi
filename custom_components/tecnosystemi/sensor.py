@@ -26,32 +26,39 @@ async def async_setup_entry(
     entities: list[TecnosystemiCoordinatorEntity] = []
     for device_id in coordinator.data:
         device_serial = coordinator.data[device_id]["Device"].Serial
-        temperature_entity = TecnosystemiTemperatureSensorEntity(
-            device_id=device_id,
-            zone=coordinator.data[device_id],
-            coordinator=coordinator,
-            api=api,
-            pin=entry.data[f"{device_serial}_{CONF_PIN}"],
-        )
-        entities.append(temperature_entity)
 
-        humidity_entity = TecnosystemiHumiditySensorEntity(
-            device_id=device_id,
-            zone=coordinator.data[device_id],
-            coordinator=coordinator,
-            api=api,
-            pin=entry.data[f"{device_serial}_{CONF_PIN}"],
-        )
-        entities.append(humidity_entity)
+        # Create a climate entity for each zone
+        zone_ids = [ zone["ZoneId"] for zone in coordinator.data[device_id].get("Zones", []) ]
+        for zone_id in zone_ids:
+            temperature_entity = TecnosystemiTemperatureSensorEntity(
+                device_id=device_id,
+                device_state=coordinator.data[device_id],
+                zone_id=zone_id,
+                coordinator=coordinator,
+                api=api,
+                pin=entry.data[f"{device_serial}_{CONF_PIN}"],
+            )
+            entities.append(temperature_entity)
 
-        shutter_entity = TecnosystemiShutterSensorEntity(
-            device_id=device_id,
-            zone=coordinator.data[device_id],
-            coordinator=coordinator,
-            api=api,
-            pin=entry.data[f"{device_serial}_{CONF_PIN}"],
-        )
-        entities.append(shutter_entity)
+            humidity_entity = TecnosystemiHumiditySensorEntity(
+                device_id=device_id,
+                device_state=coordinator.data[device_id],
+                zone_id=zone_id,
+                coordinator=coordinator,
+                api=api,
+                pin=entry.data[f"{device_serial}_{CONF_PIN}"],
+            )
+            entities.append(humidity_entity)
+
+            shutter_entity = TecnosystemiShutterSensorEntity(
+                device_id=device_id,
+                device_state=coordinator.data[device_id],
+                zone_id=zone_id,
+                coordinator=coordinator,
+                api=api,
+                pin=entry.data[f"{device_serial}_{CONF_PIN}"],
+            )
+            entities.append(shutter_entity)
 
     async_add_entities(entities)
 
@@ -65,17 +72,21 @@ class TecnosystemiTemperatureSensorEntity(TecnosystemiCoordinatorEntity, SensorE
     def __init__(
         self,
         device_id: str,
-        zone: Any,
+        device_state: dict,
+        zone_id: int,
         coordinator: TecnosystemiCoordinator,
         api: TecnosystemiAPI,
         pin: str,
     ) -> None:
         """Initialize the temperature sensor entity."""
-        TecnosystemiCoordinatorEntity.__init__(self, device_id, zone, coordinator, api, pin)
+        TecnosystemiCoordinatorEntity.__init__(self, device_id, device_state, zone_id, coordinator, api, pin)
 
-        self._attr_unique_id = device_id + "_temperature"
-        self._attr_name = "Temperature of " + zone["Name"] + " - " + zone["Device"].Name
-        self._attr_device_info = zone["DeviceInfo"]
+        self.zone_id = zone_id
+        self.device_state = device_state
+        self.zone_state = self.get_zone_state()
+        self._attr_unique_id = device_id + f"_{zone_id}_temperature"
+        self._attr_name = "Temperature of " + self.zone_state["Name"] + " - " + device_state["Device"].Name
+        self._attr_device_info = device_state["DeviceInfo"]
 
         self.update_attrs_from_state()
 
@@ -94,17 +105,20 @@ class TecnosystemiHumiditySensorEntity(TecnosystemiCoordinatorEntity, SensorEnti
     def __init__(
         self,
         device_id: str,
-        zone: Any,
+        device_state: Any,
+        zone_id: int,
         coordinator: TecnosystemiCoordinator,
         api: TecnosystemiAPI,
         pin: str,
     ) -> None:
         """Initialize the temperature sensor entity."""
-        TecnosystemiCoordinatorEntity.__init__(self, device_id, zone, coordinator, api, pin)
+        TecnosystemiCoordinatorEntity.__init__(self, device_id, device_state, zone_id, coordinator, api, pin)
 
-        self._attr_unique_id = device_id + "_humidity"
-        self._attr_name = "Humidity of " + zone["Name"] + " - " + zone["Device"].Name
-        self._attr_device_info = self._attr_device_info = zone["DeviceInfo"]
+        self.zone_state = self.get_zone_state()
+        self.device_state = device_state
+        self._attr_unique_id = device_id + f"_{zone_id}_humidity"
+        self._attr_name = "Humidity of " + self.zone_state["Name"] + " - " + device_state["Device"].Name
+        self._attr_device_info = self._attr_device_info = device_state["DeviceInfo"]
 
         self.update_attrs_from_state()
 
@@ -121,17 +135,19 @@ class TecnosystemiShutterSensorEntity(TecnosystemiCoordinatorEntity, SensorEntit
     def __init__(
         self,
         device_id: str,
-        zone: Any,
+        device_state: Any,
+        zone_id: int,
         coordinator: TecnosystemiCoordinator,
         api: TecnosystemiAPI,
         pin: str,
     ) -> None:
         """Initialize the shutter sensor entity."""
-        TecnosystemiCoordinatorEntity.__init__(self, device_id, zone, coordinator, api, pin)
+        TecnosystemiCoordinatorEntity.__init__(self, device_id, device_state, zone_id, coordinator, api, pin)
 
-        self._attr_unique_id = device_id + "_shutter"
-        self._attr_name = "Shutter Position of " + zone["Name"] + " - " + zone["Device"].Name
-        self._attr_device_info = zone["DeviceInfo"]
+        self.zone_state = self.get_zone_state()
+        self._attr_unique_id = device_id + f"_{str(zone_id)}_shutter"
+        self._attr_name = "Shutter Position of " + self.zone_state["Name"] + " - " + device_state["Device"].Name
+        self._attr_device_info = device_state["DeviceInfo"]
 
         self.update_attrs_from_state()
 

@@ -32,6 +32,23 @@ class Device:
         self.LastAddTimezone = data.get("LastAddTimezone")
         self.NUM_ERROR = data.get("NUM_ERROR")
 
+    def to_dict(self):
+        """Return a dict representation of the device."""
+        return {
+            "LVDV_Type": self.LVDV_Type,
+            "LVDV_Id": self.LVDV_Id,
+            "DevId": self.DevId,
+            "Serial": self.Serial,
+            "Name": self.Name,
+            "FWVer": self.FWVer,
+            "OperatingMode": self.OperatingMode,
+            "IsOff": self.IsOff,
+            "LastConfigUpd": self.LastConfigUpd,
+            "LastSyncUpd": self.LastSyncUpd,
+            "LastAddTimezone": self.LastAddTimezone,
+            "NUM_ERROR": self.NUM_ERROR,
+        }
+
 
 class Plant:
     """Represents a plant in the Tecnosystemi system."""
@@ -47,6 +64,16 @@ class Plant:
     def getDevices(self):
         """Return the list of devices in this plant."""
         return self.ListDevices
+
+    def to_dict(self):
+        """Return a dict representation of the plant, including devices."""
+        return {
+            "LVPL_Id": self.LVPL_Id,
+            "LVPL_Name": self.LVPL_Name,
+            "LVPL_USAN_Id": self.LVPL_USAN_Id,
+            "LVPL_Icon": self.LVPL_Icon,
+            "ListDevices": [device.to_dict() for device in self.ListDevices],
+        }
 
 
 class AESTool:

@@ -26,16 +26,15 @@ async def async_setup_entry(
 
     entities: list[TecnosystemiSwitchEntity] = []
     for device_id in coordinator.data:
-        if coordinator.data[device_id]["IsMaster"]:
-            device_serial = coordinator.data[device_id]["Device"].Serial
-            master_switch_entity = TecnosystemiMasterSwitchEntity(
-                device_id=device_id,
-                zone=coordinator.data[device_id],
-                coordinator=coordinator,
-                api=api,
-                pin=entry.data[f"{device_serial}_{CONF_PIN}"],
-            )
-            entities.append(master_switch_entity)
+        device_serial = coordinator.data[device_id]["Device"].Serial
+        master_switch_entity = TecnosystemiMasterSwitchEntity(
+            device_id=device_id,
+            device_state=coordinator.data[device_id],
+            coordinator=coordinator,
+            api=api,
+            pin=entry.data[f"{device_serial}_{CONF_PIN}"],
+        )
+        entities.append(master_switch_entity)
 
     async_add_entities(entities)
 
@@ -46,7 +45,7 @@ class TecnosystemiSwitchEntity(CoordinatorEntity, SwitchEntity):
     def __init__(
         self,
         device_id: str,
-        zone: Any,
+        device_state: Any,
         coordinator: TecnosystemiCoordinator,
         api: TecnosystemiAPI,
         pin: str,
@@ -54,12 +53,11 @@ class TecnosystemiSwitchEntity(CoordinatorEntity, SwitchEntity):
         """Initialize the sensor entity."""
         CoordinatorEntity.__init__(self, coordinator)
         self.device_id = device_id
-        self.zone = zone
+        self.device_state = device_state
         self.api = api
         self.pin = pin
-        self.zone_state = zone
         self.coordinator = coordinator
-        self._attr_device_info = zone["DeviceInfo"]
+        self._attr_device_info = device_state["DeviceInfo"]
 
     def update_attrs_from_state(self):
         """Update attributes from the current state."""
@@ -70,7 +68,7 @@ class TecnosystemiSwitchEntity(CoordinatorEntity, SwitchEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        self.zone_state = self.coordinator.data[self.device_id]
+        self.device_state = self.coordinator.data[self.device_id]
 
         self.update_attrs_from_state()
         self.async_write_ha_state()
@@ -84,22 +82,22 @@ class TecnosystemiMasterSwitchEntity(TecnosystemiSwitchEntity):
     def __init__(
         self,
         device_id: str,
-        zone: Any,
+        device_state: Any,
         coordinator: TecnosystemiCoordinator,
         api: TecnosystemiAPI,
         pin: str,
     ) -> None:
         """Initialize data structures for the master switch."""
-        TecnosystemiSwitchEntity.__init__(self, device_id, zone, coordinator, api, pin)
-        self._attr_unique_id = device_id + "_master_switch"
-        self._attr_name = zone["Device"].Name
+        TecnosystemiSwitchEntity.__init__(self, device_id, device_state, coordinator, api, pin)
+        self._attr_unique_id = device_id + "_1_master_switch"
+        self._attr_name = device_state["Device"].Name
         self.coordinator = coordinator
         self.api = api
         self.update_attrs_from_state()
 
     def update_attrs_from_state(self):
         """Update the Home Assistant attributes after an update from the coordinator."""
-        if self.zone_state["DeviceState"]["IsOFF"]:
+        if self.device_state["IsOFF"]:
             self._attr_is_on = False
         else:
             self._attr_is_on = True
@@ -108,13 +106,13 @@ class TecnosystemiMasterSwitchEntity(TecnosystemiSwitchEntity):
         """Turn off the master switch using the API."""
         cmd = {
             "is_off": 1,
-            "is_cool": self.zone_state["DeviceState"]["IsCooling"],
-            "cool_mod": self.zone_state["DeviceState"]["OperatingModeCooling"],
-            "t_can": int(self.zone_state["DeviceState"]["TempCan"]),
+            "is_cool": 1 if self.device_state["IsCooling"] else 0,
+            "cool_mod": self.device_state["OperatingModeCooling"],
+            "t_can": int(self.device_state["TempCan"]),
         }
 
         await self.api.updateCUState(
-            self.zone_state["Device"],
+            self.device_state["Device"],
             self.pin,
             cmd,
         )
@@ -125,13 +123,13 @@ class TecnosystemiMasterSwitchEntity(TecnosystemiSwitchEntity):
         """Turn on the master switch using the API."""
         cmd = {
             "is_off": 0,
-            "is_cool": self.zone_state["DeviceState"]["IsCooling"],
-            "cool_mod": self.zone_state["DeviceState"]["OperatingModeCooling"],
-            "t_can": int(self.zone_state["DeviceState"]["TempCan"]),
+            "is_cool": 1 if self.device_state["IsCooling"] else 0,
+            "cool_mod": self.device_state["OperatingModeCooling"],
+            "t_can": int(self.device_state["TempCan"]),
         }
 
         await self.api.updateCUState(
-            self.zone_state["Device"],
+            self.device_state["Device"],
             self.pin,
             cmd,
         )
