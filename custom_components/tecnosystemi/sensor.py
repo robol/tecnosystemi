@@ -116,7 +116,6 @@ class TecnosystemiShutterSensorEntity(TecnosystemiCoordinatorEntity, SensorEntit
     """Shutter Sensor entity for Tecnosystemi integration."""
 
     _attr_native_unit_of_measurement = PERCENTAGE
-    _attr_device_class = SensorDeviceClass.POWER_FACTOR
     _attr_suggested_display_precision = 0
 
     def __init__(
@@ -135,6 +134,16 @@ class TecnosystemiShutterSensorEntity(TecnosystemiCoordinatorEntity, SensorEntit
         self._attr_device_info = zone["DeviceInfo"]
 
         self.update_attrs_from_state()
+
+    @property
+    def icon(self) -> str:
+        """Return the icon to use in the frontend."""
+        if self._attr_native_value == 0:
+            return "mdi:valve-closed"
+        elif self._attr_native_value == 100:
+            return "mdi:valve-open"
+        else:
+            return "mdi:valve"
 
     def update_attrs_from_state(self):
         """Update attributes from the current state."""
