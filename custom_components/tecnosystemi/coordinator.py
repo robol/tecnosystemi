@@ -114,7 +114,7 @@ class TecnosystemiCoordinator(DataUpdateCoordinator):
                 # This will call the API and get the data for all plants and devices.
                 data = await self._async_api_call()
             except TimeoutError:
-                # Try again, without catching the second timeout error. This hels with
+                # Try again, without catching the second timeout error. This helps with
                 # the fact that sometimes the API is either slow or the call gets lost,
                 # and retrying a second time usually works.
                 _LOGGER.warning(
