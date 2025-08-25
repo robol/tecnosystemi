@@ -26,7 +26,6 @@ class TecnosystemiJSONEncoder(json.JSONEncoder):
             return o.__dict__
         return super().default(o)
 
-
 class TecnosystemiCoordinator(DataUpdateCoordinator):
     """Coordinatore for Tecnosystemi integration."""
 
@@ -42,6 +41,7 @@ class TecnosystemiCoordinator(DataUpdateCoordinator):
         )
         self.api = api
         self._plants = []
+        self.device_state = {}
 
     async def _async_setup(self):
         """Set up the coordinator.
@@ -95,6 +95,7 @@ class TecnosystemiCoordinator(DataUpdateCoordinator):
 
                     data[f"{plant.LVPL_Id}_{device.Serial}"] = state
 
+            self.device_state = data
             return data
 
     async def _async_update_data(self):

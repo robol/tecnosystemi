@@ -14,7 +14,6 @@ _PLATFORMS: list[Platform] = [Platform.CLIMATE, Platform.SENSOR, Platform.SWITCH
 
 type TecnosystemiConfigEntry = ConfigEntry[TecnosystemiCoordinator]
 
-
 async def async_setup_entry(
     hass: HomeAssistant, entry: TecnosystemiConfigEntry
 ) -> bool:
