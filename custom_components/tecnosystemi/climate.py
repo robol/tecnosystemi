@@ -21,7 +21,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import TecnosystemiConfigEntry
 from .api import TecnosystemiAPI
-from .coordinator import TecnosystemiCoordinator
+from .coordinator import TecnosystemiCoordinator, TecnosystemiCoordinatorEntity, TecnosystemiCoordinatorZoneEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class TecnosystemiMasterClimateEntity(CoordinatorEntity, ClimateEntity):
+class TecnosystemiMasterClimateEntity(TecnosystemiCoordinatorEntity, ClimateEntity):
     """Master Climate that controls the temperature of the A/C machine and the operating mode of the system."""
 
     _attr_has_entity_name = False
@@ -85,19 +85,11 @@ class TecnosystemiMasterClimateEntity(CoordinatorEntity, ClimateEntity):
         pin: str,
     ) -> None:
         """Initialize the climate entity."""
-        CoordinatorEntity.__init__(self, coordinator)
-
-        self.device_state = device_state
-        self.device_id = device_id
+        TecnosystemiCoordinatorEntity.__init__(self, device_id, device_state, coordinator, api, pin)
         self._attr_unique_id = (
             str(device_state["Plant"].LVPL_Id) + "_" + str(device_state["Device"].Serial)
         )
-        self.coordinator = coordinator
-        self.api = api
-        self.pin = pin
-
         self._attr_name = device_state["Device"].Name
-        self._attr_device_info = device_state["DeviceInfo"]
 
         # self._handle_coordinator_update()
         self.update_attrs_from_state()
@@ -118,14 +110,6 @@ class TecnosystemiMasterClimateEntity(CoordinatorEntity, ClimateEntity):
         self._attr_target_temperature = (
             float(self.device_state["TempCan"]) / 10.0
         )
-
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-        self.device_state = self.coordinator.data[self.device_id]
-
-        self.update_attrs_from_state()
-        self.async_write_ha_state()
 
     async def async_send_command(self, cmd: dict):
         """Send a command to the Tecnosystemi API."""
@@ -176,7 +160,7 @@ class TecnosystemiMasterClimateEntity(CoordinatorEntity, ClimateEntity):
         await self.async_send_command(cmd)
 
 
-class TecnosystemiClimateEntity(CoordinatorEntity, ClimateEntity):
+class TecnosystemiClimateEntity(TecnosystemiCoordinatorZoneEntity, ClimateEntity):
     """Minimal Climate entity for Tecnosystemi integration."""
 
     _attr_has_entity_name = False
@@ -203,29 +187,9 @@ class TecnosystemiClimateEntity(CoordinatorEntity, ClimateEntity):
         pin: str,
     ) -> None:
         """Initialize the climate entity."""
-        CoordinatorEntity.__init__(self, coordinator)
-        self.device_state = device_state
-        self.zone_id = zone_id
-        self.device_id = device_id
+        TecnosystemiCoordinatorZoneEntity.__init__(self, device_id, device_state, zone_id, coordinator, api, pin)
         self._attr_unique_id = device_id + "_" + str(zone_id)
-        self.coordinator = coordinator
-        self.api = api
-        self.pin = pin
-
-        zone_state = self.get_zone_state()
-
-        self._attr_name = zone_state["Name"] + " - " + device_state["Device"].Name
-        self._attr_device_info = device_state["DeviceInfo"]
-
-        # self._handle_coordinator_update()
-        self.update_attrs_from_state()
-
-    def get_zone_state(self) -> dict:
-        """Get the state of the zone."""
-        for zone in self.device_state.get("Zones", []):
-            if zone["ZoneId"] == self.zone_id:
-                return zone
-        raise ValueError(f"Zone ID {self.zone_id} not found in device state.")
+        self._attr_name = self.zone_state["Name"] + " - " + device_state["Device"].Name
 
     def update_attrs_from_state(self):
         """Update attributes from the current state."""
@@ -247,13 +211,6 @@ class TecnosystemiClimateEntity(CoordinatorEntity, ClimateEntity):
             self._attr_fan_mode = FAN_MEDIUM
         elif fan_mode == 3:
             self._attr_fan_mode = FAN_HIGH
-
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-        self.device_state = self.coordinator.data[self.device_id]
-        self.update_attrs_from_state()
-        self.async_write_ha_state()
 
     async def async_send_command(self, cmd: dict):
         """Send a command to the Tecnosystemi API."""

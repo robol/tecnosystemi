@@ -12,7 +12,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import TecnosystemiConfigEntry
 from .api import TecnosystemiAPI
-from .coordinator import TecnosystemiCoordinator
+from .coordinator import TecnosystemiCoordinator, TecnosystemiCoordinatorEntity
 
 
 async def async_setup_entry(
@@ -24,7 +24,7 @@ async def async_setup_entry(
     coordinator: TecnosystemiCoordinator = entry.runtime_data
     api = coordinator.api
 
-    entities: list[TecnosystemiSwitchEntity] = []
+    entities: list[TecnosystemiCoordinatorEntity] = []
     for device_id in coordinator.data:
         device_serial = coordinator.data[device_id]["Device"].Serial
         master_switch_entity = TecnosystemiMasterSwitchEntity(
@@ -38,43 +38,7 @@ async def async_setup_entry(
 
     async_add_entities(entities)
 
-
-class TecnosystemiSwitchEntity(CoordinatorEntity, SwitchEntity):
-    """Minimal Switch entity for Tecnosystemi integration."""
-
-    def __init__(
-        self,
-        device_id: str,
-        device_state: Any,
-        coordinator: TecnosystemiCoordinator,
-        api: TecnosystemiAPI,
-        pin: str,
-    ) -> None:
-        """Initialize the sensor entity."""
-        CoordinatorEntity.__init__(self, coordinator)
-        self.device_id = device_id
-        self.device_state = device_state
-        self.api = api
-        self.pin = pin
-        self.coordinator = coordinator
-        self._attr_device_info = device_state["DeviceInfo"]
-
-    def update_attrs_from_state(self):
-        """Update attributes from the current state."""
-        raise NotImplementedError(
-            "Please overload this function in the specific sensor entity."
-        )
-
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-        self.device_state = self.coordinator.data[self.device_id]
-
-        self.update_attrs_from_state()
-        self.async_write_ha_state()
-
-
-class TecnosystemiMasterSwitchEntity(TecnosystemiSwitchEntity):
+class TecnosystemiMasterSwitchEntity(TecnosystemiCoordinatorEntity, SwitchEntity):
     """Master Switch for the Climate system."""
 
     _attr_is_on = False
@@ -88,12 +52,9 @@ class TecnosystemiMasterSwitchEntity(TecnosystemiSwitchEntity):
         pin: str,
     ) -> None:
         """Initialize data structures for the master switch."""
-        TecnosystemiSwitchEntity.__init__(self, device_id, device_state, coordinator, api, pin)
+        TecnosystemiCoordinatorEntity.__init__(self, device_id, device_state, coordinator, api, pin)
         self._attr_unique_id = device_id + "_1_master_switch"
         self._attr_name = device_state["Device"].Name
-        self.coordinator = coordinator
-        self.api = api
-        self.update_attrs_from_state()
 
     def update_attrs_from_state(self):
         """Update the Home Assistant attributes after an update from the coordinator."""

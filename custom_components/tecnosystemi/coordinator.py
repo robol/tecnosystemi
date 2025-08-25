@@ -82,7 +82,7 @@ class TecnosystemiCoordinator(DataUpdateCoordinator):
                     state["Plant"] = plant
 
                     # For debugging purposes, print the full state
-                    print(json.dumps(state, indent=4, cls=TecnosystemiJSONEncoder))
+                    # print(json.dumps(state, indent=4, cls=TecnosystemiJSONEncoder))
 
                     state["DeviceInfo"] = DeviceInfo(
                              identifiers={(DOMAIN, state["Device"].Serial)},
@@ -121,7 +121,42 @@ class TecnosystemiCoordinator(DataUpdateCoordinator):
             raise UpdateFailed(f"Error communicating with API: {err}") from None
 
 class TecnosystemiCoordinatorEntity(CoordinatorEntity):
-    """Minimal Temperature Sensor entity for Tecnosystemi integration."""
+    """Generic entity representing data from a Tecnosystemi device."""
+
+    def __init__(
+        self,
+        device_id: str,
+        device_state: Any,
+        coordinator: TecnosystemiCoordinator,
+        api: TecnosystemiAPI,
+        pin: str,
+    ) -> None:
+        """Initialize the entity."""
+        CoordinatorEntity.__init__(self, coordinator)
+        self.device_id = device_id
+        self.device_state = device_state
+        self.api = api
+        self.pin = pin
+        self.coordinator = coordinator
+        self._attr_device_info = device_state["DeviceInfo"]
+        self.update_attrs_from_state()
+
+    def update_attrs_from_state(self):
+        """Update attributes from the current state."""
+        raise NotImplementedError(
+            "Please overload this function in the specific sensor entity."
+        )
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        self.device_state = self.coordinator.data[self.device_id]
+        self.update_attrs_from_state()
+        self.async_write_ha_state()
+
+
+class TecnosystemiCoordinatorZoneEntity(TecnosystemiCoordinatorEntity):
+    """Generic entity representing data from a specific zone of a Tecnosystemi device."""
 
     def __init__(
         self,
@@ -132,20 +167,11 @@ class TecnosystemiCoordinatorEntity(CoordinatorEntity):
         api: TecnosystemiAPI,
         pin: str,
     ) -> None:
-        """Initialize the sensor entity."""
-        CoordinatorEntity.__init__(self, coordinator)
-        self.device_id = device_id
-        self.device_state = device_state
+        """Initialize the entity."""
         self.zone_id = zone_id
-        self.api = api
-        self.pin = pin
-        self.coordinator = coordinator
-
-    def update_attrs_from_state(self):
-        """Update attributes from the current state."""
-        raise NotImplementedError(
-            "Please overload this function in the specific sensor entity."
-        )
+        self.device_state = device_state
+        self.zone_state = self.get_zone_state()
+        TecnosystemiCoordinatorEntity.__init__(self, device_id, device_state, coordinator, api, pin)
 
     def get_zone_state(self) -> dict:
         """Get the state of the zone."""
@@ -159,6 +185,5 @@ class TecnosystemiCoordinatorEntity(CoordinatorEntity):
         """Handle updated data from the coordinator."""
         self.device_state = self.coordinator.data[self.device_id]
         self.zone_state = self.get_zone_state()
-
         self.update_attrs_from_state()
         self.async_write_ha_state()
