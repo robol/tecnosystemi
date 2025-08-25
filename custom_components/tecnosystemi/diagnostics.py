@@ -11,7 +11,7 @@ async def async_get_config_entry_diagnostics(
 
     config_data = entry.data
 
-    TO_REDACT = { "password" }
+    TO_REDACT = { "password", "Serial" }
 
     api_data = entry.runtime_data.device_state
     for device_id in api_data:
